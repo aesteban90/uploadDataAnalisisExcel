@@ -2,6 +2,7 @@ import logo from './logo.svg';
 import './App.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import UploadFilesForm from './components/uploadFiles/uploadFiles-form.component';
+import ExcelFacturacionForm from './components/excelFacturacion/excelFacturacion-form.component';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
             <BrowserRouter>
               <Routes>
                 <Route path='/upload' element={<UploadFilesForm />} />
+                <Route path='/uploadFacturacion' element={<ExcelFacturacionForm />} />
               </Routes>
             </BrowserRouter>
         </div>
