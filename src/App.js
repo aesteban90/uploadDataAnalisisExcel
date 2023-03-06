@@ -11,7 +11,7 @@ function App() {
             <BrowserRouter>
               <Routes>
                 <Route path='/upload' element={<UploadFilesForm />} />
-                <Route path='/uploadFacturacion' element={<ExcelFacturacionForm />} />
+                <Route path='/' element={<ExcelFacturacionForm />} />
               </Routes>
             </BrowserRouter>
         </div>

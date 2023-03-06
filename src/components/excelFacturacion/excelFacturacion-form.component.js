@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
 import {ExcelRenderer} from 'react-excel-renderer';
+import axios from 'axios';
 
 export default class ExcelFacturacionForm extends Component{    
     constructor(props){
@@ -8,7 +9,18 @@ export default class ExcelFacturacionForm extends Component{
             cols: [],
             rows: [],
             arrayDataAnalisis: [],
+            inventarios: []
         };        
+    }
+
+    componentDidMount() {
+        axios.get(process.env.REACT_APP_SERVER_URL + "/inventarios/")
+        .then(response => {
+            this.setState({
+                inventarios: response.data
+            }, () => console.log('Inventarios', this.state.inventarios))  
+        })
+        .catch(err => console.log(err))
     }
     
     revisarExcel = () =>{
@@ -29,35 +41,13 @@ export default class ExcelFacturacionForm extends Component{
             user_updated: "Administrador del Sistema",            
           }
 
-        this.state.rows.map((row,index) => {
-            if( row.length > 0) {
-                row.map((data,index_data) => {
-                    
-                });
-            }
-            
-        })
-        //Calculando los porcentajes
-        arrayDataAnalisis.map( (dataAnalisis, index) =>{
-            dataAnalisis.numerico_porcentaje = this.percentage(dataAnalisis.numerico, rows_lenght);
-            dataAnalisis.alfanumerico_porcentaje = 100 - dataAnalisis.numerico_porcentaje;
-            if(dataAnalisis.numerico_porcentaje > 80 && dataAnalisis.alfanumerico > 0 ){
-                //Datos Criticos
-                dataAnalisis.datos.map(dato => {
-                    if(dato.type === 'alfanumerico'){
-                        let critico = dataAnalisis.datosCriticos.filter(v => v.data == dato.data);
-                        if(critico.length == 0){
-                            dataAnalisis.datosCriticos.push({...dato, count: 1})
-                        }else{
-                            critico[0].count++;
-                        }
-                    }
-                })
-            }
-        })
-        console.log(arrayDataAnalisis)
-        this.setState({arrayDataAnalisis})
-        
+        this.state.rows.map((data,index) => {
+            if( data.length > 0 && index > 0) {
+                    //console.log(data)
+                const fecha = this.excelDateToJSDate(data[0]);
+                console.log('fecha',  fecha)
+            }            
+        })        
     }
 
     percentage = (partialValue, totalValue) => {
@@ -85,6 +75,24 @@ export default class ExcelFacturacionForm extends Component{
           }
         });   
     }
+
+    
+    excelDateToJSDate = (date) => {
+        let converted_date = new Date(Math.round((date - 25569) * 864e5));
+        return converted_date;
+        /*
+        converted_date = String(converted_date).slice(4, 15);
+        date = converted_date.split(" ")
+        let day = date[1];
+        let month = date[0];
+        month = "JanFebMarAprMayJunJulAugSepOctNovDec".indexOf(month) / 3 + 1
+        if (month.toString().length <= 1)
+            month = '0' + month
+        let year = date[2];
+        return String(day + '/' + month + '/' + year)
+        */
+    }
+
     datalistCriticos(criticos){
         return criticos.map((dato, index) => {
             return (
