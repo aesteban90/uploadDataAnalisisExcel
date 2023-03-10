@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import {ExcelRenderer} from 'react-excel-renderer';
 import axios from 'axios';
+import ProgressBar from 'react-bootstrap/ProgressBar';
 
 export default class ExcelFacturacionForm extends Component{    
     constructor(props){
@@ -9,7 +10,8 @@ export default class ExcelFacturacionForm extends Component{
             cols: [],
             rows: [],
             arrayDataAnalisis: [],
-            inventarios: []
+            inventarios: [],
+            progress: 0
         };        
     }
 
@@ -18,36 +20,83 @@ export default class ExcelFacturacionForm extends Component{
         .then(response => {
             this.setState({
                 inventarios: response.data
-            }, () => console.log('Inventarios', this.state.inventarios))  
+            })  
         })
         .catch(err => console.log(err))
     }
     
-    revisarExcel = () =>{
-        let rows_lenght = this.state.rows.length - 1;
-        let arrayDataAnalisis = [];
-        let datajson = {
-            caja: {
-              $oid: "63ece012273b64941aa2070d"
-            },
-            inventario: {
-              $oid: "63ed0efa273b64941aa20742"
-            },
-            cantidad: 4,
-            precio: 66000,
-            total: 333000,
-            estado: "Facturado",
-            user_created: "Administrador del Sistema",
-            user_updated: "Administrador del Sistema",            
-          }
+    revisarExcel = async () =>{
+        const datosImportar = [];
+        const datosNotFound = [];
+        const datosError = [];
+        
+        if(this.state.rows[0][0] === "Codigo Barra"){
+            this.state.rows.map(async (data,index) => {
+                if( data.length > 0 && index > 0 ) {
+                    
+                    const inventario = {
+                        codigo: ((data[0]+"").length === 2 ? "000"+data[0] : "00"+ data[0]),
+                        descripcion: data[1],
+                        cantidad: 0,
+                        precio_costo: 0,
+                        precio_venta: (data[2] === undefined ? data[3] : data[2]),
+                        user_created: "Administrador del Sistema",
+                        user_updated: "Administrador del Sistema"
+                    }
+                    await axios.post(process.env.REACT_APP_SERVER_URL + '/inventarios/add',inventario)
+                       .catch(err => {datosError.push(inventario); console.log(err)});                    
+                }
+            })
+        }else{
+            //this.state.rows.map( async (data,index) => {
+            for (let index = 0; index < this.state.rows.length; index++) {
+                const data = this.state.rows[index];
+                if( data.length > 0 && index > 10000 && index <= 15000) {
+                    const codigoInv = (data[6]+"").substring(2,7)
+                    const inventario = this.state.inventarios.filter(el => el.codigo === codigoInv);
+                    if(inventario.length > 0){
+                        const fecha = this.excelDateToJSDate(data[0]);
+                        let precio = (data[8] === 0 || isNaN(data[8]) ? data[9] : data[8]);
+                        precio = (isNaN(precio) ? 0 : precio);
 
-        this.state.rows.map((data,index) => {
-            if( data.length > 0 && index > 0) {
-                    //console.log(data)
-                const fecha = this.excelDateToJSDate(data[0]);
-                console.log('fecha',  fecha)
-            }            
-        })        
+                        const cajaDetalles = {
+                            caja: "63ece012273b64941aa2070d",
+                            inventario: inventario[0]._id,
+                            cantidad: data[5],
+                            precio,
+                            total: data[12],
+                            estado: "Facturado",
+                            user_created: "Administrador del Sistema",
+                            user_updated: "Administrador del Sistema",
+                            created_at: fecha,
+                            updated_at: fecha
+                        }  
+                        datosImportar.push(cajaDetalles);
+                    }else{                        
+                        datosNotFound.push(data)
+                    }
+                }            
+            }
+        }
+
+        axios.post(process.env.REACT_APP_SERVER_URL + '/cajas-detalles/importar',datosImportar)
+        .catch(err => {console.log(err)})  
+
+        console.log('datosImportar length '+datosImportar.length, datosImportar)
+        console.log('datosNotFound', datosNotFound)
+        console.log('datosError', datosError)
+    }
+
+    postDetalle = async (cajaDetalles, datosImportar, inventario) => {
+        return await Promise.all(
+            //console.log('cajaDetalles',cajaDetalles);
+            axios.post(process.env.REACT_APP_SERVER_URL + '/cajas-detalles/importar',cajaDetalles)
+            .then(() => {
+                console.log('Agregado ',inventario[0].descripcion);
+                datosImportar.push(cajaDetalles);
+            })
+            .catch(err => {console.log(err)})                       
+        )
     }
 
     percentage = (partialValue, totalValue) => {
@@ -79,18 +128,7 @@ export default class ExcelFacturacionForm extends Component{
     
     excelDateToJSDate = (date) => {
         let converted_date = new Date(Math.round((date - 25569) * 864e5));
-        return converted_date;
-        /*
-        converted_date = String(converted_date).slice(4, 15);
-        date = converted_date.split(" ")
-        let day = date[1];
-        let month = date[0];
-        month = "JanFebMarAprMayJunJulAugSepOctNovDec".indexOf(month) / 3 + 1
-        if (month.toString().length <= 1)
-            month = '0' + month
-        let year = date[2];
-        return String(day + '/' + month + '/' + year)
-        */
+        return converted_date;      
     }
 
     datalistCriticos(criticos){
@@ -104,6 +142,10 @@ export default class ExcelFacturacionForm extends Component{
             )
         })
     }
+    progressBar = () => {
+        return <ProgressBar now={this.state.progress} label={`${this.state.progress}%`} />
+    }
+    
     
     datalist(){
         return this.state.arrayDataAnalisis.map((dato, index) => {
@@ -142,7 +184,8 @@ export default class ExcelFacturacionForm extends Component{
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>       
-
+                    
+                    {this.progressBar()}
                     {
                         this.state.arrayDataAnalisis.length === 0 ?
                             <div className="col-md-12 text-center m-3">Sin registros encontrados</div>
