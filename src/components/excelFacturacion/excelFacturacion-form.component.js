@@ -51,7 +51,7 @@ export default class ExcelFacturacionForm extends Component{
             //this.state.rows.map( async (data,index) => {
             for (let index = 0; index < this.state.rows.length; index++) {
                 const data = this.state.rows[index];
-                if( data.length > 0 && index > 10000 && index <= 15000) {
+                if( data.length > 0 && index > 0 && index <= 5000) {
                     const codigoInv = (data[6]+"").substring(2,7)
                     const inventario = this.state.inventarios.filter(el => el.codigo === codigoInv);
                     if(inventario.length > 0){
